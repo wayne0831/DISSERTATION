@@ -1,0 +1,1 @@
+data, model 등을 pickle로 저장해서 모은 폴더
