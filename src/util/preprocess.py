@@ -2,7 +2,7 @@
 # PROJECT: DIISERTATION
 # CHAPTER: Util
 # SECTION: preprocess
-# AUTHOR: Yang.
+# AUTHOR: Yang et al.
 # DATE: since 25.05.26
 ##################################################################################################################################################################
 
@@ -67,3 +67,19 @@ class OnlineStandardScaler:
         X_scl = self.partial_fit(X).transform(X)
 
         return X_scl
+    
+def convert_synthethic_dataset_to_array(data):
+    """
+    Convert synthetic dataset into array type
+    """
+    # set X_list and y_list
+    X_list, y_list = [], []
+    for x, y in data:
+        X_list.append(list(x.values()))
+        y_list.append(y)
+
+    # convert list into numpy array
+    X = np.array(X_list)
+    y = np.array(y_list)
+
+    return X, y
