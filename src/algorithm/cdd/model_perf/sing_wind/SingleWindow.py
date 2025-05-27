@@ -17,6 +17,10 @@ import numpy as np
 import math
 import os
 
+from src.util.train import run_ml_model_pipeline
+from src.util.preprocess import OnlineStandardScaler
+from sklearn.preprocessing import StandardScaler
+
 from scipy.spatial.distance import jensenshannon
 from sklearn.metrics.pairwise import cosine_similarity
 import scipy.stats as stats
@@ -27,6 +31,7 @@ from sklearn.base import TransformerMixin
 from sklearn.preprocessing import StandardScaler
 #from src.util.util import run_ml_model_pipeline, calculate_attention_matrix
 from datetime import datetime, timedelta
+
 
 import matplotlib.pyplot as pipet
 import matplotlib.patches as patches
@@ -47,35 +52,36 @@ class DDM:
     def __init__(self, **kwargs):
         """
         Initialize values
-        **kwargs: {alpha_w: float, alpha_d: float, warm_start: int}
+        **kwargs: {alpha_w: float, alpha_d: float, clt_idx: int}
 
         :param alpha_w:     warning conf.level                    (rng: >= 1)   (type: float)            
         :param alpha_d:     drift conf.level                      (rng: >= 1)   (type: float)
-        :param warm_start:  min. num. of data points to obey CLT  (rng: >= 30)  (type: int)
+        :param clt_idx:     min. num. of data points to obey CLT  (rng: >= 30)  (type: int)
         """
         # values to be reset after drift detection
         self.p_min = np.inf   # min. err. rate of the ML model
         self.s_min = np.inf   # min. std. dev. of the ML model
 
         # hyperparameters of DDM
-        self.alpha_w    = kwargs['alpha_w']
-        self.alpha_d    = kwargs['alpha_d'] 
-        self.warm_start = kwargs['warm_start'] 
+        self.alpha_w = kwargs['alpha_w']
+        self.alpha_d = kwargs['alpha_d'] 
+        self.clt_idx = kwargs['clt_idx'] 
 
         # state / warning period / prediction results for each cdd
         self.state        = 0   # 0: stable / 1: warning / 2: drift
         self.warn_prd     = []
         self.res_pred_tmp = []
 
-    def _reset_parameters(self):
-        """
-        Reset parameters for next iteration of concept drift detection
-        """
-        self.p_min    = np.inf
-        self.s_min    = np.inf
-
-        return None
-
+        # dict containing results of cdda
+        self.res_cdda = {
+            'time_idx':      [], # data index
+            'y_real_list':   [], # real targets
+            'y_pred_list':   [], # predictions
+            'res_pred_list': [], # prediction results (= 0 or 1)
+            'cd_idx':        [], # index of concept drfit
+            'len_adapt':     [], # length of adaptation period
+        }
+    
     @staticmethod
     def _detect_drift(p_idx, s_idx, p_min, s_min, alpha_w, alpha_d):
         """
@@ -103,36 +109,145 @@ class DDM:
                 0
 
         return state
-    
-    def run_cdd(self, res_prd, idx):
-        # add prediction results for cdd
-        self.res_pred_tmp.extend(res_prd)
 
-        if len(self.res_pred_tmp) >= self.warm_start:
-            #print('length of predictions:', len(self.res_pred_tmp))
-
-            # compute err. rate and std. dev.
-            p_idx = 1 - sum(self.res_pred_tmp)/len(self.res_pred_tmp)
-            s_idx = np.sqrt(p_idx*(1-p_idx)/len((self.res_pred_tmp)))
-
-            # update p_min and s_min if p_idx + s_idx is lower than p_min + s_min
-            self.p_min = p_idx if p_idx + s_idx < self.p_min + self.s_min else self.p_min
-            self.s_min = s_idx if p_idx + s_idx < self.p_min + self.s_min else self.s_min
-
-            # evaluate state of the concept
-            self.state = self._detect_drift(p_idx   = p_idx,
-                                            s_idx   = s_idx, 
-                                            p_min   = self.p_min, 
-                                            s_min   = self.s_min, 
-                                            alpha_w = self.alpha_w, 
-                                            alpha_d = self.alpha_d)
-            if self.state == 0:
-                pass
-            elif self.state == 1:
-                self.warn_prd.append(idx)
-            elif self.state == 2:
-                self._reset_parameters()
-            # end if
-        # end if
+    def _adapt_drift(self, state, min_len_tr, tr_start_idx, tr_end_idx, te_end_idx):
+        """
+        Adjust the training set for ml model update
         
+        :param state:           state of the concept                 (type: int)
+        :param min_len_tr       minimum length of training set for ml model update  (type: int)
+        :param tr_start_idx:    previous start index of training set (type: int)
+        :param tr_end_idx:      previous end index of training set   (type: int)        
+        :param te_end_idx:      previous end index of test set       (type: int)                
+        :return:                updated start index of training set  (type: int)
+        """
+        if state == 0:  # stable
+            tr_start_idx = tr_start_idx
+        elif state == 1:  # warning
+            # increment adaptation period
+            self.warn_prd.append(te_end_idx)
+            tr_start_idx = tr_start_idx
+        elif state == 2: # drift
+            print(f'Drift detected at {te_end_idx}')
+
+            # set drift index
+            drift_idx = te_end_idx
+
+            # increment adaptation period
+            self.warn_prd.append(drift_idx) 
+
+            # set the start index of model update
+            if (drift_idx - self.warn_prd[0]) <= min_len_tr:
+                tr_start_idx = drift_idx - min_len_tr 
+            else: 
+                tr_start_idx = self.warn_prd[0]
+            # end if
+
+            # set the results of cdda
+            self.res_cdda['cd_idx'].append(drift_idx)
+            self.res_cdda['len_adapt'].append(drift_idx-tr_start_idx)
+
+            # reset values
+            self._reset_parameters()
+            self.warn_prd     = []
+            self.res_pred_tmp = []
+        # end if
+
+        return tr_start_idx
+
+    def _reset_parameters(self):
+        """
+        Reset parameters for next iteration of concept drift detection
+        """
+        self.p_min    = np.inf
+        self.s_min    = np.inf
+
+        return None
+
+    def run_cdda(self, X, y, scaler, prob_type, ml_mdl, tr_start_idx, tr_end_idx, len_batch, min_len_tr, perf_bnd):
+        """
+        Run Concept Drift Detection and Adaptation
+
+        :param X:               input       (type: np.array)
+        :param y:               target      (type: np.array)
+        :param scaler           scaler      (type: TransformerMixin)
+        :param prob_type:       problem type (clf: classification / reg: regression) (type: str)
+        :param ml_mdl:          ml model   (type: str)
+        :param tr_start_idx:    initial start index of training set (type: int)
+        :param tr_end_idx:      initial end index of training set   (type: int)        
+        :param len_batch        length of batch                     (type: int)
+        :param min_len_tr       minimum length of training set for ml model update  (type: int)
+        :param perf_bnd         performance bound for treating prediction results as (in)correct (type: float)
+        :return
+        """
+        # run process
+        num_data = len(X)
+        while tr_end_idx < num_data:
+            # TODO: line 187-219 is same across all cdd methods -> need to refactor into a common function
+            # set test set / time index
+            te_start_idx = tr_end_idx
+            te_end_idx   = min(tr_end_idx + len_batch, num_data)
+            te_time_idx  = X.iloc[te_start_idx:te_end_idx].index
+
+            tr_idx_list = list(range(tr_start_idx, tr_end_idx))
+            te_idx_list = list(range(te_start_idx, te_end_idx))
+
+            # create training/test set
+            X_tr, y_tr = X[tr_idx_list], y[tr_idx_list]
+            X_te, y_te = X[te_idx_list], y[te_idx_list]
+
+            # cumulate incoming data points
+            self.X_cum = np.concatenate([self.X_cum, X_tr]) if self.X_cum is not None else X_tr
+            self.y_cum = np.concatenate([self.y_cum, y_tr]) if self.y_cum is not None else y_tr
+
+            # train ml model and predict testset
+            ml_mdl, y_pred_te = run_ml_model_pipeline(X_tr, y_tr, X_te, y_te, scaler, ml_mdl)
+
+            # extract prediction results
+            if prob_type == 'CLF':
+                res_pred_idx = [1 if pred == real else 0 for pred, real in zip(y_pred_te, y_te)] 
+            elif prob_type == 'REG':
+                res_pred_idx = [1 if abs(pred - real) <= perf_bnd else 0 for pred, real in zip(y_pred_te, y_te)] 
+            # end if
+
+            # add values into dict containing results of cdda
+            self.res_cdda['time_idx'].extend(te_time_idx)
+            self.res_cdda['y_real_list'].extend(y_te)
+            self.res_cdda['y_pred_list'].extend(y_pred_te)
+            self.res_cdda['res_pred_list'].extend(res_pred_idx)
+
+            # add prediction results for cdd
+            self.res_pred_tmp.extend(res_pred_idx)
+
+            if len(self.res_pred_tmp) >= self.clt_idx:
+                #print('length of predictions:', len(self.res_pred_tmp))
+
+                # compute err. rate and std. dev.
+                p_idx = 1 - sum(self.res_pred_tmp)/len(self.res_pred_tmp)
+                s_idx = np.sqrt(p_idx*(1-p_idx)/len((self.res_pred_tmp)))
+
+                # update p_min and s_min if p_idx + s_idx is lower than p_min + s_min
+                self.p_min = p_idx if p_idx + s_idx < self.p_min + self.s_min else self.p_min
+                self.s_min = s_idx if p_idx + s_idx < self.p_min + self.s_min else self.s_min
+
+                # evaluate state of the concept
+                self.state = self._detect_drift(p_idx   = p_idx,
+                                                s_idx   = s_idx, 
+                                                p_min   = self.p_min, 
+                                                s_min   = self.s_min, 
+                                                alpha_w = self.alpha_w, 
+                                                alpha_d = self.alpha_d)
+
+                # set the start index of updated training set
+                tr_start_idx = self._adapt_drift(state        = self.state, 
+                                                 min_len_tr   = min_len_tr,
+                                                 tr_start_idx = tr_start_idx, 
+                                                 tr_end_idx   = tr_end_idx, 
+                                                 te_end_idx   = te_end_idx)
+            # end if
+            
+            # set the end index of updated training set
+            tr_end_idx += len_batch
+        # end while
+
         return None
