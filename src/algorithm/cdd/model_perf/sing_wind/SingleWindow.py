@@ -187,7 +187,7 @@ class DDM:
             # set test set / time index
             te_start_idx = tr_end_idx
             te_end_idx   = min(tr_end_idx + len_batch, num_data)
-            te_time_idx  = X.iloc[te_start_idx:te_end_idx].index
+            te_time_idx  = X.iloc[te_start_idx:te_end_idx].index # 없애기
 
             tr_idx_list = list(range(tr_start_idx, tr_end_idx))
             te_idx_list = list(range(te_start_idx, te_end_idx))
