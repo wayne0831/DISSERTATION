@@ -17,7 +17,7 @@ import numpy as np
 import math
 import os
 
-from src.util.train import run_ml_model_pipeline
+from src.util.train import set_ml_dataset, run_ml_model
 from src.util.preprocess import OnlineStandardScaler
 from sklearn.preprocessing import StandardScaler
 
@@ -187,8 +187,29 @@ class DDM:
         # run process
         num_data = len(X)
         while tr_end_idx < num_data:
-            print(f'tr_start_idx: {} / tr_end_idx: {}')
+            print(f'tr_start_idx: {tr_start_idx} / tr_end_idx: {tr_end_idx}')
             
+            self.X_cum, self.y_cum, X_tr, y_tr, X_te, y_te = set_ml_dataset(tr_start_idx = tr_start_idx, 
+                                                                            tr_end_idx   = tr_end_idx, 
+                                                                            len_batch    = len_batch, 
+                                                                            X            = X, 
+                                                                            y            = y, 
+                                                                            X_cum        = self.X_cum, 
+                                                                            y_cum        = self.y_cum)
+            
+            # train the ml model and predict the test set
+            y_pred_te, res_pred_idx = run_ml_model(X_cum        = self.X_cum, 
+                                                   y_cum        = self.y_cum, 
+                                                   X_tr         = X_tr, 
+                                                   y_tr         = y_tr, 
+                                                   X_te         = X_te, 
+                                                   y_te         = y_te, 
+                                                   scaler       = scaler, 
+                                                   ml_mdl       = ml_mdl, 
+                                                   prob_type    = prob_type, 
+                                                   perf_bnd     = perf_bnd)
+
+            # TODO: 위 함수에 넣을지 말지 고민
             # add values into dict containing results of cdda
             self.res_cdda['time_idx'].extend(X_te.index)
             self.res_cdda['y_real_list'].extend(y_te)
@@ -224,7 +245,8 @@ class DDM:
                                                  min_len_tr   = min_len_tr,
                                                  tr_start_idx = tr_start_idx, 
                                                  tr_end_idx   = tr_end_idx, 
-                                                 te_end_idx   = te_end_idx)
+                                                 te_end_idx   = te_end_idx) # TODO: te_end_idx = min(tr_end_idx + len_batch, len(X)) 대체?
+            
             # end if
             
             # set the end index of updated training set
