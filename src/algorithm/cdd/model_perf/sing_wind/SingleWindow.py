@@ -71,6 +71,10 @@ class DDM:
         self.state        = 0   # 0: stable / 1: warning / 2: drift
         self.warn_prd     = []
         self.res_pred_tmp = []
+        
+        #
+        self.X_cum = None
+        self.y_cum = None
 
         # dict containing results of cdda
         self.res_cdda = {
