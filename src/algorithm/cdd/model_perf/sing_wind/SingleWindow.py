@@ -126,7 +126,7 @@ class DDM:
         :return:                updated start index of training set  (type: int)
         """
         if state == 0:  # stable
-            tr_start_idx = tr_start_idx
+            tr_start_idx = tr_start_idx # TODO: online learning이라서 tr_start_idx 수정해야할듯
         elif state == 1:  # warning
             # increment adaptation period
             self.warn_prd.append(te_end_idx)
@@ -187,35 +187,10 @@ class DDM:
         # run process
         num_data = len(X)
         while tr_end_idx < num_data:
-            # TODO: line 187-219 is same across all cdd methods -> need to refactor into a common function
-            # set test set / time index
-            te_start_idx = tr_end_idx
-            te_end_idx   = min(tr_end_idx + len_batch, num_data)
-            te_time_idx  = X.iloc[te_start_idx:te_end_idx].index # 없애기
-
-            tr_idx_list = list(range(tr_start_idx, tr_end_idx))
-            te_idx_list = list(range(te_start_idx, te_end_idx))
-
-            # create training/test set
-            X_tr, y_tr = X[tr_idx_list], y[tr_idx_list]
-            X_te, y_te = X[te_idx_list], y[te_idx_list]
-
-            # cumulate incoming data points
-            self.X_cum = np.concatenate([self.X_cum, X_tr]) if self.X_cum is not None else X_tr
-            self.y_cum = np.concatenate([self.y_cum, y_tr]) if self.y_cum is not None else y_tr
-
-            # train ml model and predict testset
-            ml_mdl, y_pred_te = run_ml_model_pipeline(X_tr, y_tr, X_te, y_te, scaler, ml_mdl)
-
-            # extract prediction results
-            if prob_type == 'CLF':
-                res_pred_idx = [1 if pred == real else 0 for pred, real in zip(y_pred_te, y_te)] 
-            elif prob_type == 'REG':
-                res_pred_idx = [1 if abs(pred - real) <= perf_bnd else 0 for pred, real in zip(y_pred_te, y_te)] 
-            # end if
-
+            print(f'tr_start_idx: {} / tr_end_idx: {}')
+            
             # add values into dict containing results of cdda
-            self.res_cdda['time_idx'].extend(te_time_idx)
+            self.res_cdda['time_idx'].extend(X_te.index)
             self.res_cdda['y_real_list'].extend(y_te)
             self.res_cdda['y_pred_list'].extend(y_pred_te)
             self.res_cdda['res_pred_list'].extend(res_pred_idx)
@@ -242,6 +217,8 @@ class DDM:
                                                 alpha_w = self.alpha_w, 
                                                 alpha_d = self.alpha_d)
 
+                # TODO: tr_start_idx, tr_end_idx 위치 확인 / online, offline learning 모두 포괄가능하게
+                # TODO: tr_start_idx, tr_end_idx 모두 함수의 return값으로?!
                 # set the start index of updated training set
                 tr_start_idx = self._adapt_drift(state        = self.state, 
                                                  min_len_tr   = min_len_tr,
