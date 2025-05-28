@@ -189,6 +189,7 @@ class DDM:
         while tr_end_idx < num_data:
             print(f'tr_start_idx: {tr_start_idx} / tr_end_idx: {tr_end_idx}')
             
+            # set dataset for ml model
             self.X_cum, self.y_cum, X_tr, y_tr, X_te, y_te = set_ml_dataset(tr_start_idx = tr_start_idx, 
                                                                             tr_end_idx   = tr_end_idx, 
                                                                             len_batch    = len_batch, 

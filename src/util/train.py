@@ -40,7 +40,7 @@ import time
 # TODO: 함수 활용 여부 고민 필요
 def set_ml_dataset(tr_start_idx, tr_end_idx, len_batch, X, y, X_cum, y_cum):
     """
-    Set dataset for training the ml model
+    Set dataset for ml model
     """
 
     # set test set index
