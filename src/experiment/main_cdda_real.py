@@ -1,0 +1,68 @@
+##################################################################################################################################################################
+# PROJECT: DISSERTATION
+# CHAPTER: Experiment
+# SECTION: main_real
+# AUTHOR: Yang et al.
+# DATE: since 25.05.26
+##################################################################################################################################################################
+
+##################################################################################################################################################################
+# import libraries
+##################################################################################################################################################################
+
+import json
+from src.common.config import *
+from src.util.experiment import *
+from src.util.preprocess import OnlineStandardScaler
+from src.util.metric import hit_ratio
+from itertools import product
+
+import pandas as pd
+import numpy as np
+import os
+from xgboost import XGBRegressor
+import matplotlib.pyplot as plt
+
+##################################################################################################################################################################
+# load and preprocess dataset
+##################################################################################################################################################################
+
+# load dataset
+df_path = DATA_PATH[DATA_TYPE][DATA]
+index   = DATASET[DATA_TYPE][DATA]['INDEX']
+df      = pd.read_csv(df_path, index_col = index)
+
+# divide dataset into X and y
+input = DATASET[DATA_TYPE][DATA][f'INPUT_{VER}']
+trgt  = DATASET[DATA_TYPE][DATA]['TRGT']
+X = df.loc[:, input]
+y = df.loc[:, trgt]
+y = y.values.ravel() # Note) y must be array!
+
+##################################################################################################################################################################
+# set experiment setting
+##################################################################################################################################################################
+
+# set initial index of training set
+init_tr_start_idx   = INFRM_ADAPT[DATA_TYPE][DATA]['INIT_TR_START_IDX']
+init_num_tr         = INFRM_ADAPT[DATA_TYPE][DATA]['INIT_NUM_TR']
+init_tr_end_idx     = init_tr_start_idx + init_num_tr
+
+# set problem type
+prob_type = DATASET[DATA_TYPE][DATA]['PROB_TYPE']
+
+# set performance bound for determining the prediction results as right or wrong
+ctq_thr = np.std(y[init_tr_end_idx:])
+ctq_thr
+
+run_experiment_cdda(X=X, 
+                    y=y, 
+                    scaler=OnlineStandardScaler(), 
+                    tr_start_idx=init_tr_start_idx, 
+                    tr_end_idx=init_tr_end_idx, 
+                    len_batch=12, 
+                    min_len_tr=1, 
+                    perf_bnd=ctq_thr,
+                    prob_type=prob_type,
+                    res_df_perf_path=RES_PATH['PERF_ROOT'] + RES_PATH['CDDA'], 
+                    res_df_pred_path=RES_PATH['PRED_ROOT'] + RES_PATH['CDDA'])

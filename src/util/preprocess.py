@@ -68,7 +68,7 @@ class OnlineStandardScaler:
 
         return X_scl
     
-def convert_synthethic_dataset_to_array(data):
+def set_synthethic_dataset(data):
     """
     Convert synthetic dataset into array type
     """
@@ -79,7 +79,7 @@ def convert_synthethic_dataset_to_array(data):
         y_list.append(y)
 
     # convert list into numpy array
-    X = np.array(X_list)
+    X = pd.DataFrame(X_list)
     y = np.array(y_list)
 
     return X, y

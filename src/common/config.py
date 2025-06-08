@@ -10,7 +10,7 @@
 # import libraries
 ##################################################################################################################################################################
 
-from sklearn.linear_model   import LinearRegression, Lasso, LogisticRegression, Ridge
+from sklearn.linear_model   import LinearRegression, Lasso, LogisticRegression, Ridge, SGDRegressor
 from sklearn.neural_network import MLPRegressor, MLPClassifier
 from sklearn.naive_bayes    import GaussianNB
 #from skmultiflow.trees      import HoeffdingTreeRegressor
@@ -18,20 +18,21 @@ from sklearn.naive_bayes    import GaussianNB
 from xgboost import XGBRegressor, XGBClassifier
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from src.algorithm.cdd.model_perf.sing_wind.SingleWindow import *
-from src.algorithm.cdd.model_perf.mult_wind.MultipleWindows import *
+#from src.algorithm.cdd.model_perf.mult_wind.MultipleWindows import *
 from src.algorithm.cda.CDA  import *
 import os
+from river.datasets import synth
 
 ##################################################################################################################################################################
 # version control
 ##################################################################################################################################################################
 
-DATE            = '250522'
-DATA_TYPE       = 'APP'   # 'APP', 'ART', 'REAL'
-DATA            = 'PDX'   # 'POSCO', 'PDX'
+DATE            = '250609'
+DATA_TYPE       = 'APP'   # 'APP', 'SYN', 'REAL'
+DATA            = 'PDX'   # 'POSCO', 'PDX', 'LED'
 PROB_TYPE       = 'REG'   # 'CLF', 'REG'
-ML_METH_LIST    = ['LASSO'] # LASSO, LOG_REG
-
+ML_METH_LIST    = ['SGD']  # LASSO, LOG_REG
+SYN_DATA        = synth.LED(noise_percentage=0.1, seed=42).take(10000)
 """
 250311
 Completed: {
@@ -240,7 +241,8 @@ ML = {
     },
     'REG': {
         'LIN':   LinearRegression(),
-        'LASSO': Lasso(),
+        'SGD':   SGDRegressor(random_state=42, max_iter=1000, tol=1e-3),
+        'LASSO': Lasso(alpha=0.5, random_state=42),
         'RIDGE': Ridge(),
         'RF':    RandomForestRegressor(random_state=42, n_estimators=50),
         'XGB':   XGBRegressor(random_state=42, n_estimators=50),
@@ -252,22 +254,20 @@ ML = {
 CDD = {
     # single window
     'DDM':    DDM,       # type: ignore
-    #'EDDM':   EDDM,      # type: ignore
-    'FHDDM':  FHDDM,     # type: ignore
-    #'RDDM':   RDDM,      # type: ignore   
-    'MDDM':   MDDM,      # type: ignore
-    'BDDM':   BDDM,      # type: ignore
-    #'VRDDM':  VRDDM,     # type: ignore
-    'DDM_ATTN': DDM_ATTN, # type: ignore
+    # #'EDDM':   EDDM,      # type: ignore
+    # 'FHDDM':  FHDDM,     # type: ignore
+    # #'RDDM':   RDDM,      # type: ignore   
+    # 'MDDM':   MDDM,      # type: ignore
+    # 'BDDM':   BDDM,      # type: ignore
+    # #'VRDDM':  VRDDM,     # type: ignore
+    # 'DDM_ATTN': DDM_ATTN, # type: ignore
 
-    # double window
-    'ADWIN':  ADWIN,     # type: ignore
-    'STEPD':  STEPD,     # type: ignore
-    'WSTD':   WSTD,     # type: ignore
-    'FDD':    FDD,       # type: ignore
-    'FHDDMS': FHDDMS,     # type: ignore
-
-    'MRDDM': MRDDM
+    # # double window
+    # 'ADWIN':  ADWIN,     # type: ignore
+    # 'STEPD':  STEPD,     # type: ignore
+    # 'WSTD':   WSTD,     # type: ignore
+    # 'FDD':    FDD,       # type: ignore
+    # 'FHDDMS': FHDDMS,     # type: ignore
 }
 
 # concept drift adaptation
@@ -293,7 +293,7 @@ CDD_PARAM_GRID = {
     'DDM': {
         'alpha_w':      [2],  # [1.5, 2],            
         'alpha_d':      [3],  # [2.5, 3],
-        'warm_start':   [36], # [30, 60],
+        'clt_idx':      [36], # [30, 60],
     },
     # 'EDDM': {
     #     'alpha_w':      [0.95],            

@@ -72,7 +72,8 @@ class DDM:
         self.warn_prd     = []
         self.res_pred_tmp = []
         
-        #
+        # cumulative data points, X_cum and y_cum
+        # Note) They are used to train the ml model, when the model does not support partial_fit
         self.X_cum = None
         self.y_cum = None
 
@@ -114,7 +115,7 @@ class DDM:
 
         return state
 
-    def _adapt_drift(self, state, min_len_tr, tr_start_idx, tr_end_idx, te_end_idx):
+    def _adapt_drift(self, state, min_len_tr, tr_start_idx, tr_end_idx, te_start_idx, te_end_idx):
         """
         Adjust the training set for ml model update
         
@@ -126,13 +127,16 @@ class DDM:
         :return:                updated start index of training set  (type: int)
         """
         if state == 0:  # stable
-            tr_start_idx = tr_start_idx # TODO: online learning이라서 tr_start_idx 수정해야할듯
+            tr_start_idx = te_start_idx
+            tr_end_idx   = te_end_idx
         elif state == 1:  # warning
             # increment adaptation period
             self.warn_prd.append(te_end_idx)
-            tr_start_idx = tr_start_idx
+
+            tr_start_idx = te_start_idx
+            tr_end_idx   = te_end_idx
         elif state == 2: # drift
-            print(f'Drift detected at {te_end_idx}')
+            print(f'Drift detected at {te_end_idx}')    
 
             # set drift index
             drift_idx = te_end_idx
@@ -142,10 +146,12 @@ class DDM:
 
             # set the start index of model update
             if (drift_idx - self.warn_prd[0]) <= min_len_tr:
-                tr_start_idx = drift_idx - min_len_tr 
+                tr_start_idx = drift_idx - min_len_tr
             else: 
                 tr_start_idx = self.warn_prd[0]
             # end if
+            
+            tr_end_idx = te_end_idx
 
             # set the results of cdda
             self.res_cdda['cd_idx'].append(drift_idx)
@@ -153,11 +159,12 @@ class DDM:
 
             # reset values
             self._reset_parameters()
+            self.state        = 0
             self.warn_prd     = []
             self.res_pred_tmp = []
         # end if
 
-        return tr_start_idx
+        return tr_start_idx, tr_end_idx
 
     def _reset_parameters(self):
         """
@@ -187,30 +194,36 @@ class DDM:
         # run process
         num_data = len(X)
         while tr_end_idx < num_data:
-            print(f'tr_start_idx: {tr_start_idx} / tr_end_idx: {tr_end_idx}')
-            
+            # set test set index
+            te_start_idx = tr_end_idx
+            te_end_idx   = min(tr_end_idx + len_batch, len(X))
+
+            print(f'tr_start_idx: {tr_start_idx} / tr_end_idx: {tr_end_idx} / te_start_idx: {te_start_idx} / te_end_idx: {te_end_idx}')
+
             # set dataset for ml model
-            self.X_cum, self.y_cum, X_tr, y_tr, X_te, y_te = set_ml_dataset(tr_start_idx = tr_start_idx, 
-                                                                            tr_end_idx   = tr_end_idx, 
-                                                                            len_batch    = len_batch, 
-                                                                            X            = X, 
-                                                                            y            = y, 
-                                                                            X_cum        = self.X_cum, 
-                                                                            y_cum        = self.y_cum)
-            
+            X_tr, y_tr, X_te, y_te = set_ml_dataset(tr_start_idx = tr_start_idx, 
+                                                    tr_end_idx   = tr_end_idx, 
+                                                    te_start_idx = te_start_idx, 
+                                                    te_end_idx   = te_end_idx,
+                                                    X            = X, 
+                                                    y            = y)
+            # cumulate incoming data points
+            self.X_cum = np.concatenate([self.X_cum, X_tr]) if self.X_cum is not None else X_tr
+            self.y_cum = np.concatenate([self.y_cum, y_tr]) if self.y_cum is not None else y_tr
+
             # train the ml model and predict the test set
             y_pred_te, res_pred_idx = run_ml_model(X_cum        = self.X_cum, 
                                                    y_cum        = self.y_cum, 
                                                    X_tr         = X_tr, 
                                                    y_tr         = y_tr, 
                                                    X_te         = X_te, 
-                                                   y_te         = y_te, 
+                                                   y_te         = y_te,
+                                                   y            = y,
                                                    scaler       = scaler, 
                                                    ml_mdl       = ml_mdl, 
                                                    prob_type    = prob_type, 
                                                    perf_bnd     = perf_bnd)
 
-            # TODO: 위 함수에 넣을지 말지 고민
             # add values into dict containing results of cdda
             self.res_cdda['time_idx'].extend(X_te.index)
             self.res_cdda['y_real_list'].extend(y_te)
@@ -238,20 +251,15 @@ class DDM:
                                                 s_min   = self.s_min, 
                                                 alpha_w = self.alpha_w, 
                                                 alpha_d = self.alpha_d)
-
-                # TODO: tr_start_idx, tr_end_idx 위치 확인 / online, offline learning 모두 포괄가능하게
-                # TODO: tr_start_idx, tr_end_idx 모두 함수의 return값으로?!
-                # set the start index of updated training set
-                tr_start_idx = self._adapt_drift(state        = self.state, 
-                                                 min_len_tr   = min_len_tr,
-                                                 tr_start_idx = tr_start_idx, 
-                                                 tr_end_idx   = tr_end_idx, 
-                                                 te_end_idx   = te_end_idx) # TODO: te_end_idx = min(tr_end_idx + len_batch, len(X)) 대체?
-            
             # end if
             
-            # set the end index of updated training set
-            tr_end_idx += len_batch
+            # set the start/end index of updated training set
+            tr_start_idx, tr_end_idx = self._adapt_drift(state        = self.state, 
+                                                         min_len_tr   = min_len_tr,
+                                                         tr_start_idx = tr_start_idx, 
+                                                         tr_end_idx   = tr_end_idx,
+                                                         te_start_idx = te_start_idx, 
+                                                         te_end_idx   = te_end_idx)
         # end while
 
         return None
