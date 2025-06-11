@@ -70,6 +70,7 @@ def run_ml_model(X_cum, y_cum, X_tr, y_tr, X_te, y_te, y, scaler, ml_mdl, prob_t
         # predict the test sets
         y_pred_te = ml_mdl.predict(X_te_scl)
     else:
+        print(f'Length of X_cum: {len(X_cum)}')
         # offline scaling
         X_tr_scl = scaler.fit_transform(X_cum)
         X_te_scl = scaler.transform(X_te)

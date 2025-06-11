@@ -27,12 +27,18 @@ from river.datasets import synth
 # version control
 ##################################################################################################################################################################
 
-DATE            = '250609'
+DATE            = '250613'
 DATA_TYPE       = 'APP'   # 'APP', 'SYN', 'REAL'
 DATA            = 'PDX'   # 'POSCO', 'PDX', 'LED'
 PROB_TYPE       = 'REG'   # 'CLF', 'REG'
-ML_METH_LIST    = ['SGD']  # LASSO, LOG_REG
+ML_METH_LIST    = ['LASSO']  # LASSO, LOG_REG
+
+SCALER          = OnlineStandardScaler() if ML_METH_LIST[0] == 'SGD' else StandardScaler()
+LEN_BATCH       = 12
+MIN_LEN_TR      = 1
+
 SYN_DATA        = synth.LED(noise_percentage=0.1, seed=42).take(10000)
+
 """
 250311
 Completed: {
@@ -46,12 +52,7 @@ Ongoing: ['DOER']
 # CDD_METH_LIST   = ['DDM', 'FHDDM', 'MDDM', 'BDDM', 'ADWIN', 'STEPD', 'WSTD', 'FDD', 'FHDDMS']
 CDD_METH_LIST   = ['DDM']
 CDA_METH_LIST   = ['REC']
-VER             = 'V4'    # PDX -> v1: n_m_m[:39] / v2: n_m_m[:19] / v3: posco
-
-# # 250114 Gyujin
-# CDD_METH_LIST   = ['DDM', 'ADWIN', 'STEPD', 'FHDDM', 'FHDDMS', 'MDDM']
-# CDA_METH_LIST   = ['REC']
-# VER             = 'V4'    # V1, V2, V3, V4 (POSCO 1, 2, 3, 4)
+VER             = 'V1'    # PDX -> v1: n_m_m[:39] / v2: n_m_m[:19] / v3: posco
 
 ##################################################################################################################################################################
 # paths

@@ -160,6 +160,8 @@ class DDM:
             # reset values
             self._reset_parameters()
             self.state        = 0
+            self.X_cum        = None
+            self.y_cum        = None
             self.warn_prd     = []
             self.res_pred_tmp = []
         # end if
