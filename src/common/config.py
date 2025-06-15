@@ -18,7 +18,7 @@ from sklearn.naive_bayes    import GaussianNB
 from xgboost import XGBRegressor, XGBClassifier
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from src.algorithm.cdd.model_perf.sing_wind.SingleWindow import *
-#from src.algorithm.cdd.model_perf.mult_wind.MultipleWindows import *
+from src.algorithm.cdd.model_perf.mult_wind.MultipleWindows import *
 from src.algorithm.cda.CDA  import *
 import os
 from river.datasets import synth
@@ -27,23 +27,23 @@ from river.datasets import synth
 # version control
 ##################################################################################################################################################################
 
-DATE            = '250613'
+DATE            = '250615'
 DATA_TYPE       = 'APP'   # 'APP', 'SYN', 'REAL'
 DATA            = 'PDX'   # 'POSCO', 'PDX', 'LED'
 PROB_TYPE       = 'REG'   # 'CLF', 'REG'
-ML_METH_LIST    = ['LASSO']  # LASSO, LOG_REG
+ML_METH_LIST    = ['SGD']  # LASSO, LOG_REG
 
 SCALER          = OnlineStandardScaler() if ML_METH_LIST[0] == 'SGD' else StandardScaler()
-LEN_BATCH       = 12
+LEN_BATCH       = 10
 MIN_LEN_TR      = 1
 
 SYN_DATA        = synth.LED(noise_percentage=0.1, seed=42).take(10000)
 
 """
-250311
+250615
 Completed: {
-    SingleWindow:    ['DDM', 'FHDDM', 'MDDM-a/g/e', 'BDDM']
-    MultipleWindows: ['ADWIN', 'STEPD', 'WSTD', 'FDD-t/s/p', 'FHDDMS']
+    SingleWindow:    ['DDM']
+    MultipleWindows: ['MRDDM']
         TBD: PL, AL
 }
 
@@ -52,7 +52,7 @@ Ongoing: ['DOER']
 # CDD_METH_LIST   = ['DDM', 'FHDDM', 'MDDM', 'BDDM', 'ADWIN', 'STEPD', 'WSTD', 'FDD', 'FHDDMS']
 CDD_METH_LIST   = ['DDM']
 CDA_METH_LIST   = ['REC']
-VER             = 'V1'    # PDX -> v1: n_m_m[:39] / v2: n_m_m[:19] / v3: posco
+VER             = 'V4'    # PDX -> v1: n_m_m[:39] / v2: n_m_m[:19] / v3: posco
 
 ##################################################################################################################################################################
 # paths
@@ -263,12 +263,13 @@ CDD = {
     # #'VRDDM':  VRDDM,     # type: ignore
     # 'DDM_ATTN': DDM_ATTN, # type: ignore
 
-    # # double window
+    # double window
     # 'ADWIN':  ADWIN,     # type: ignore
     # 'STEPD':  STEPD,     # type: ignore
     # 'WSTD':   WSTD,     # type: ignore
     # 'FDD':    FDD,       # type: ignore
     # 'FHDDMS': FHDDMS,     # type: ignore
+    'MRDDM':  MRDDM,     # type: ignore
 }
 
 # concept drift adaptation
@@ -356,19 +357,25 @@ CDD_PARAM_GRID = {
         'len_sw':       [36],   # [30, 60], PDX: 25
     },
 
-    ### todo
-    'VRDDM': {
-        'len_wind':     [36],
-        'conc':         [0.01], # 0.01 ~ 0.2
-        'alpha_d':      [0.05]
+    # ### todo
+    # 'VRDDM': {
+    #     'len_wind':     [36],
+    #     'conc':         [0.01], # 0.01 ~ 0.2
+    #     'alpha_d':      [0.05]
+    # },
+
+    'MRDDM': {
+        'alpha_d':      [0.05],
+        'len_step':     [2],
+        'len_sw':       [30],
     },
-    'DDM_ATTN': {
-        'alpha_w':      [2],  # [1.5, 2],            
-        'alpha_d':      [3],  # [2.5, 3],
-        'clt_idx':      [36], # [30, 60],
-        #'conc':         [0.01], # 0.01 ~ 0.2
-        'top_n':        [5]
-    },
+    # 'DDM_ATTN': {
+    #     'alpha_w':      [2],  # [1.5, 2],            
+    #     'alpha_d':      [3],  # [2.5, 3],
+    #     'clt_idx':      [36], # [30, 60],
+    #     #'conc':         [0.01], # 0.01 ~ 0.2
+    #     'top_n':        [5]
+    # },
 }
 
 ##################################################################################################################################################################
