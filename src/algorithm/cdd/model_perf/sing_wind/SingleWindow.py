@@ -131,22 +131,20 @@ class DDM:
             tr_end_idx   = te_end_idx
         elif state == 1:  # warning
             # increment adaptation period
-            self.warn_prd.append(te_end_idx)
+            self.warn_prd.append(te_start_idx) 
+            #self.warn_prd.append(te_end_idx) 
 
             tr_start_idx = te_start_idx
             tr_end_idx   = te_end_idx
         elif state == 2: # drift
             print(f'Drift detected at {te_end_idx}')    
 
-            # set drift index
-            drift_idx = te_end_idx
-
             # increment adaptation period
-            self.warn_prd.append(drift_idx) 
+            self.warn_prd.append(te_end_idx)
 
             # set the start index of model update
-            if (drift_idx - self.warn_prd[0]) <= min_len_tr:
-                tr_start_idx = drift_idx - min_len_tr
+            if (te_end_idx - self.warn_prd[0]) < min_len_tr:
+                tr_start_idx = te_end_idx - min_len_tr
             else: 
                 tr_start_idx = self.warn_prd[0]
             # end if
@@ -154,7 +152,7 @@ class DDM:
             tr_end_idx = te_end_idx
 
             # set the results of cdda
-            self.res_cdda['cd_idx'].append(drift_idx)
+            self.res_cdda['cd_idx'].append(te_end_idx)
             self.res_cdda['len_adapt'].append(tr_end_idx-tr_start_idx)
 
             # reset values

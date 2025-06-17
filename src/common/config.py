@@ -27,7 +27,7 @@ from river.datasets import synth
 # version control
 ##################################################################################################################################################################
 
-DATE            = '250618_WO_LW'
+DATE            = 'SFP'
 DATA_TYPE       = 'APP'   # 'APP', 'SYN', 'REAL'
 DATA            = 'PDX'   # 'POSCO', 'PDX', 'LED'
 PROB_TYPE       = 'REG'   # 'CLF', 'REG'
