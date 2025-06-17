@@ -27,14 +27,17 @@ from river.datasets import synth
 # version control
 ##################################################################################################################################################################
 
-DATE            = '250615'
+DATE            = '250618_WO_LW'
 DATA_TYPE       = 'APP'   # 'APP', 'SYN', 'REAL'
 DATA            = 'PDX'   # 'POSCO', 'PDX', 'LED'
 PROB_TYPE       = 'REG'   # 'CLF', 'REG'
-ML_METH_LIST    = ['SGD']  # LASSO, LOG_REG
+ML_METH         = 'SGD'   # LASSO, LOG_REG
+CDD_METH_LIST   = ['MRDDM']
+CDA_METH_LIST   = ['REC']
+VER             = 'V4'    # PDX -> v1: n_m_m[:39] / v2: n_m_m[:19] / v3: posco
 
-SCALER          = OnlineStandardScaler() if ML_METH_LIST[0] == 'SGD' else StandardScaler()
-LEN_BATCH       = 10
+SCALER          = OnlineStandardScaler() if ML_METH == 'SGD' else StandardScaler()
+LEN_BATCH       = 12
 MIN_LEN_TR      = 1
 
 SYN_DATA        = synth.LED(noise_percentage=0.1, seed=42).take(10000)
@@ -43,16 +46,14 @@ SYN_DATA        = synth.LED(noise_percentage=0.1, seed=42).take(10000)
 250615
 Completed: {
     SingleWindow:    ['DDM']
-    MultipleWindows: ['MRDDM']
+    MultipleWindows: ['STEPD', 'MRDDM']
         TBD: PL, AL
 }
 
 Ongoing: ['DOER']
 """
 # CDD_METH_LIST   = ['DDM', 'FHDDM', 'MDDM', 'BDDM', 'ADWIN', 'STEPD', 'WSTD', 'FDD', 'FHDDMS']
-CDD_METH_LIST   = ['DDM']
-CDA_METH_LIST   = ['REC']
-VER             = 'V4'    # PDX -> v1: n_m_m[:39] / v2: n_m_m[:19] / v3: posco
+
 
 ##################################################################################################################################################################
 # paths
@@ -265,10 +266,10 @@ CDD = {
 
     # double window
     # 'ADWIN':  ADWIN,     # type: ignore
-    # 'STEPD':  STEPD,     # type: ignore
+    'STEPD':  STEPD,     # type: ignore
     # 'WSTD':   WSTD,     # type: ignore
     # 'FDD':    FDD,       # type: ignore
-    # 'FHDDMS': FHDDMS,     # type: ignore
+    'FHDDMS': FHDDMS,     # type: ignore
     'MRDDM':  MRDDM,     # type: ignore
 }
 
@@ -295,7 +296,7 @@ CDD_PARAM_GRID = {
     'DDM': {
         'alpha_w':      [2],  # [1.5, 2],            
         'alpha_d':      [3],  # [2.5, 3],
-        'clt_idx':      [36], # [30, 60],
+        'clt_idx':      [30], # [30, 60],
     },
     # 'EDDM': {
     #     'alpha_w':      [0.95],            
@@ -337,7 +338,7 @@ CDD_PARAM_GRID = {
     'STEPD': {
         'alpha_w':      [0.05],            
         'alpha_d':      [0.003], # [0.005, 0.1],
-        'len_sw':       [36], # [30, 60],
+        'len_sw':       [30], # [30, 60],
     },
     'WSTD': {
         'alpha_w':      [0.05],            
@@ -353,8 +354,8 @@ CDD_PARAM_GRID = {
     },
     'FHDDMS': {
         'delta':        [1e-7], # [1e-7, 1e-6, 1e-5],
-        'len_lw':       [108],  # [100, 200],
-        'len_sw':       [36],   # [30, 60], PDX: 25
+        'len_lw':       [100],  # [100, 200],
+        'len_sw':       [30],   # [30, 60], PDX: 25
     },
 
     # ### todo
@@ -366,7 +367,7 @@ CDD_PARAM_GRID = {
 
     'MRDDM': {
         'alpha_d':      [0.05],
-        'len_step':     [2],
+        'len_step':     [3],
         'len_sw':       [30],
     },
     # 'DDM_ATTN': {

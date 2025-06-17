@@ -48,7 +48,7 @@ def generate_parameter_combinations(CDD_PARAM_GRID, CDD_METH):
 def run_experiment_cdda(X, y, scaler, tr_start_idx, tr_end_idx, len_batch, min_len_tr, perf_bnd, prob_type,
                         res_df_perf_path, res_df_pred_path):
     
-    for ML_METH, CDD_METH, CDA_METH in product(ML_METH_LIST, CDD_METH_LIST, CDA_METH_LIST):
+    for CDD_METH, CDA_METH in product(CDD_METH_LIST, CDA_METH_LIST):
         print('*' * 150)
         print(f'ML_METH: {ML_METH}, CDD_METH: {CDD_METH}, CDA_METH: {CDA_METH}')
 
@@ -120,11 +120,11 @@ def run_experiment_cdda(X, y, scaler, tr_start_idx, tr_end_idx, len_batch, min_l
         # end for param_comb
 
         # set prediction result dataframe
-        res_df_pred_name = f'{DATE}_{DATA_TYPE}_{DATA}_{ML_METH}_{CDD_METH}_{CDA_METH}_{VER}_PRED.csv'
+        res_df_pred_name = f'{DATE}_{DATA_TYPE}_{DATA}_{ML_METH}_{CDD_METH}_{CDA_METH}_{LEN_BATCH}_{VER}_PRED.csv'
         res_df_pred.to_csv(res_df_pred_path + res_df_pred_name)
 
         # set performance results
-        res_df_perf_name = f'{DATE}_{DATA_TYPE}_{DATA}_{ML_METH}_{CDD_METH}_{CDA_METH}_{VER}_PERF.csv'
+        res_df_perf_name = f'{DATE}_{DATA_TYPE}_{DATA}_{ML_METH}_{CDD_METH}_{CDA_METH}_{LEN_BATCH}_{VER}_PERF.csv'
         res_df_perf.to_csv(res_df_perf_path + res_df_perf_name)
     
     # end for param_comb ML_METH, CDD_METH, CDA_METH

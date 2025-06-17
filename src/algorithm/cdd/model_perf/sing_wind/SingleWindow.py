@@ -155,7 +155,7 @@ class DDM:
 
             # set the results of cdda
             self.res_cdda['cd_idx'].append(drift_idx)
-            self.res_cdda['len_adapt'].append(drift_idx-tr_start_idx)
+            self.res_cdda['len_adapt'].append(tr_end_idx-tr_start_idx)
 
             # reset values
             self._reset_parameters()
@@ -214,26 +214,26 @@ class DDM:
             self.y_cum = np.concatenate([self.y_cum, y_tr]) if self.y_cum is not None else y_tr
 
             # train the ml model and predict the test set
-            y_pred_te, res_pred_idx = run_ml_model(X_cum        = self.X_cum, 
-                                                   y_cum        = self.y_cum, 
-                                                   X_tr         = X_tr, 
-                                                   y_tr         = y_tr, 
-                                                   X_te         = X_te, 
-                                                   y_te         = y_te,
-                                                   y            = y,
-                                                   scaler       = scaler, 
-                                                   ml_mdl       = ml_mdl, 
-                                                   prob_type    = prob_type, 
-                                                   perf_bnd     = perf_bnd)
+            y_pred_tr, y_pred_te, res_pred_tr_idx, res_pred_te_idx = run_ml_model(X_cum     = self.X_cum, 
+                                                                                  y_cum     = self.y_cum, 
+                                                                                  X_tr      = X_tr, 
+                                                                                  y_tr      = y_tr, 
+                                                                                  X_te      = X_te, 
+                                                                                  y_te      = y_te,
+                                                                                  y         = y,
+                                                                                  scaler    = scaler, 
+                                                                                  ml_mdl    = ml_mdl, 
+                                                                                  prob_type = prob_type, 
+                                                                                  perf_bnd  = perf_bnd)
 
             # add values into dict containing results of cdda
             self.res_cdda['time_idx'].extend(X_te.index)
             self.res_cdda['y_real_list'].extend(y_te)
             self.res_cdda['y_pred_list'].extend(y_pred_te)
-            self.res_cdda['res_pred_list'].extend(res_pred_idx)
+            self.res_cdda['res_pred_list'].extend(res_pred_te_idx)
 
             # add prediction results for cdd
-            self.res_pred_tmp.extend(res_pred_idx)
+            self.res_pred_tmp.extend(res_pred_te_idx)
 
             if len(self.res_pred_tmp) >= self.clt_idx:
                 #print('length of predictions:', len(self.res_pred_tmp))

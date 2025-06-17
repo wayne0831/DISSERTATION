@@ -12,20 +12,21 @@
 
 from src.common.config import *
 from src.util import *
-from algorithm.ml.ML import *
+#from algorithm.ml.ML import *
 
 import pandas as pd
 import numpy as np
 import time
 import os
 
+import ast
 import matplotlib.pyplot as plt
 
 ##################################################################################################################################################################
 # set user-defined functions
 ##################################################################################################################################################################
 
-
+### TODO
 def plot_performances(train_len : int, in_sample_error : float, *args, colors = None, legends = None, title : str):
     if colors is None:
         colors = plt.cm.get_cmap('tab10', len(args))
@@ -46,3 +47,28 @@ def plot_performances(train_len : int, in_sample_error : float, *args, colors = 
     plt.legend(legends)
     plt.title(title)
     plt.show()
+
+
+def visualize_cdda_results(res_dir_pred, res_dir_perf, file_name):
+
+    res_dir_pred = RES_PATH['PRED_ROOT'] + RES_PATH['CDDA']
+    res_dir_perf = RES_PATH['PERF_ROOT'] + RES_PATH['CDDA']
+
+    res_df_pred = pd.read_csv(f'{res_dir_pred}{file_name}_PRED.csv')
+    res_df_perf = pd.read_csv(f'{res_dir_perf}{file_name}_PERF.csv')
+
+    init_tr_end_idx  = res_df_perf['init_tr_end_idx'][0]
+    mdl_upd_idx_list = ast.literal_eval(res_df_perf['cd_idx'][0])
+    res_df_pred['time'] = pd.to_datetime(res_df_pred['time_idx'])
+
+    plt.figure(figsize=(15, 6))
+    plt.plot(res_df_pred['time'], res_df_pred['y_real'], label='Real', color='black', alpha=1)
+    plt.plot(res_df_pred['time'], res_df_pred['y_pred'], label='Pred', color='red', alpha=0.9)
+    plt.legend(loc='lower right')
+    plt.ylabel('Target')
+    for idx in mdl_upd_idx_list:
+        plt.axvline(x=res_df_pred['time'][idx-init_tr_end_idx], linestyle='--', alpha=0.3)
+    # for
+    plt.show()
+
+    return None

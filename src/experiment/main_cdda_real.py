@@ -15,6 +15,7 @@ from src.common.config import *
 from src.util.experiment import *
 from src.util.preprocess import OnlineStandardScaler
 from src.util.metric import hit_ratio
+from src.util.visualization import *
 from itertools import product
 
 import pandas as pd
@@ -52,8 +53,7 @@ init_tr_end_idx     = init_tr_start_idx + init_num_tr
 prob_type = DATASET[DATA_TYPE][DATA]['PROB_TYPE']
 
 # set performance bound for determining the prediction results as right or wrong
-ctq_thr = np.std(y[init_tr_end_idx:])
-ctq_thr
+ctq_thr = 1 # np.std(y[:init_tr_end_idx])
 
 run_experiment_cdda(X                = X, 
                     y                = y, 
@@ -66,3 +66,15 @@ run_experiment_cdda(X                = X,
                     prob_type        = prob_type,
                     res_df_perf_path = RES_PATH['PERF_ROOT'] + RES_PATH['CDDA'], 
                     res_df_pred_path = RES_PATH['PRED_ROOT'] + RES_PATH['CDDA'])
+
+##################################################################################################################################################################
+# set experiment setting
+##################################################################################################################################################################
+
+res_dir_pred = RES_PATH['PRED_ROOT'] + RES_PATH['CDDA']
+res_dir_perf = RES_PATH['PERF_ROOT'] + RES_PATH['CDDA']
+
+file_name    = f'250618_APP_PDX_SGD_{CDD_METH_LIST[0]}_REC_12_V4'
+
+visualize_cdda_results(res_dir_pred=res_dir_pred, res_dir_perf=res_dir_perf, file_name=file_name)
+

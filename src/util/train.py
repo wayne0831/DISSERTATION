@@ -80,13 +80,16 @@ def run_ml_model(X_cum, y_cum, X_tr, y_tr, X_te, y_te, y, scaler, ml_mdl, prob_t
     # end if
 
     # predict testset
+    y_pred_tr = ml_mdl.predict(X_tr_scl)
     y_pred_te = ml_mdl.predict(X_te_scl)
 
     # extract prediction results
     if prob_type == 'CLF':
-        res_pred_idx = [1 if pred == real else 0 for pred, real in zip(y_pred_te, y_te)] 
+        res_pred_tr_idx = [1 if pred == real else 0 for pred, real in zip(y_pred_tr, y_tr)] 
+        res_pred_te_idx = [1 if pred == real else 0 for pred, real in zip(y_pred_te, y_te)] 
     elif prob_type == 'REG':
-        res_pred_idx = [1 if abs(pred - real) <= perf_bnd else 0 for pred, real in zip(y_pred_te, y_te)] 
+        res_pred_tr_idx = [1 if abs(pred - real) <= perf_bnd else 0 for pred, real in zip(y_pred_tr, y_tr)] 
+        res_pred_te_idx = [1 if abs(pred - real) <= perf_bnd else 0 for pred, real in zip(y_pred_te, y_te)] 
     # end if
 
-    return y_pred_te, res_pred_idx
+    return y_pred_tr, y_pred_te, res_pred_tr_idx, res_pred_te_idx
