@@ -45,6 +45,98 @@ warnings.filterwarnings('ignore')
 ##################################################################################################################################################################
 
 ##################################################################################################################################################################
+# CONST (Constant, update the model with every incoming data point) 
+##################################################################################################################################################################
+
+class CONST:
+    def __init__(self, **kwargs):
+        """
+        Initialize values
+        **kwargs: {none: str}
+
+        :param none: NONE (type: str)            
+        """
+        # hyperparameters of Const
+        self.none = kwargs['NONE']
+        
+        # cumulative data points, X_cum and y_cum
+        # Note) They are used to train the ml model, when the model does not support partial_fit
+        self.X_cum = None
+        self.y_cum = None
+
+        # dict containing results of cdda
+        self.res_cdda = {
+            'time_idx':      [], # data index
+            'y_real_list':   [], # real targets
+            'y_pred_list':   [], # predictions
+            'res_pred_list': [], # prediction results (= 0 or 1)
+            'cd_idx':        [], # index of concept drfit
+            'len_adapt':     [], # length of adaptation period
+        }
+ 
+    def run_cdda(self, X, y, scaler, prob_type, ml_mdl, tr_start_idx, tr_end_idx, len_batch, min_len_tr, perf_bnd):
+        """
+        Run Concept Drift Detection and Adaptation
+
+        :param X:               input       (type: np.array)
+        :param y:               target      (type: np.array)
+        :param scaler           scaler      (type: TransformerMixin)
+        :param prob_type:       problem type (clf: classification / reg: regression) (type: str)
+        :param ml_mdl:          ml model   (type: str)
+        :param tr_start_idx:    initial start index of training set (type: int)
+        :param tr_end_idx:      initial end index of training set   (type: int)        
+        :param len_batch        length of batch                     (type: int)
+        :param min_len_tr       minimum length of training set for ml model update  (type: int)
+        :param perf_bnd         performance bound for treating prediction results as (in)correct (type: float)
+        :return
+        """
+        # run process
+        num_data = len(X)
+        while tr_end_idx < num_data:
+            # set test set index
+            te_start_idx = tr_end_idx
+            te_end_idx   = min(tr_end_idx + len_batch, len(X))
+
+            print(f'tr_start_idx: {tr_start_idx} / tr_end_idx: {tr_end_idx} / te_start_idx: {te_start_idx} / te_end_idx: {te_end_idx}')
+
+            # set dataset for ml model
+            X_tr, y_tr, X_te, y_te = set_ml_dataset(tr_start_idx = tr_start_idx, 
+                                                    tr_end_idx   = tr_end_idx, 
+                                                    te_start_idx = te_start_idx, 
+                                                    te_end_idx   = te_end_idx,
+                                                    X            = X, 
+                                                    y            = y)
+            # cumulate incoming data points
+            self.X_cum = np.concatenate([self.X_cum, X_tr]) if self.X_cum is not None else X_tr
+            self.y_cum = np.concatenate([self.y_cum, y_tr]) if self.y_cum is not None else y_tr
+
+            # train the ml model and predict the test set
+            y_pred_tr, y_pred_te, res_pred_tr_idx, res_pred_te_idx = run_ml_model(X_cum     = self.X_cum, 
+                                                                                  y_cum     = self.y_cum, 
+                                                                                  X_tr      = X_tr, 
+                                                                                  y_tr      = y_tr, 
+                                                                                  X_te      = X_te, 
+                                                                                  y_te      = y_te,
+                                                                                  y         = y,
+                                                                                  scaler    = scaler, 
+                                                                                  ml_mdl    = ml_mdl, 
+                                                                                  prob_type = prob_type, 
+                                                                                  perf_bnd  = perf_bnd)
+
+            # add values into dict containing results of cdda
+            self.res_cdda['time_idx'].extend(X_te.index)
+            self.res_cdda['y_real_list'].extend(y_te)
+            self.res_cdda['y_pred_list'].extend(y_pred_te)
+            self.res_cdda['res_pred_list'].extend(res_pred_te_idx)
+
+            # set the start/end index of updated training set
+            tr_start_idx = te_start_idx
+            tr_end_idx   = te_end_idx
+        # end while
+
+        return None
+
+##################################################################################################################################################################
 # DDM (Drift Detection Method, 2004) 
 ##################################################################################################################################################################
 

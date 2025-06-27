@@ -27,12 +27,12 @@ from river.datasets import synth
 # version control
 ##################################################################################################################################################################
 
-DATE            = 'SFP'
+DATE            = '250626'
 DATA_TYPE       = 'APP'   # 'APP', 'SYN', 'REAL'
 DATA            = 'PDX'   # 'POSCO', 'PDX', 'LED'
 PROB_TYPE       = 'REG'   # 'CLF', 'REG'
 ML_METH         = 'SGD'   # LASSO, LOG_REG
-CDD_METH_LIST   = ['MRDDM']
+CDD_METH_LIST   = ['CONST']
 CDA_METH_LIST   = ['REC']
 VER             = 'V4'    # PDX -> v1: n_m_m[:39] / v2: n_m_m[:19] / v3: posco
 
@@ -255,6 +255,7 @@ ML = {
 # concept drift detection
 CDD = {
     # single window
+    'CONST':  CONST,
     'DDM':    DDM,       # type: ignore
     # #'EDDM':   EDDM,      # type: ignore
     # 'FHDDM':  FHDDM,     # type: ignore
@@ -293,6 +294,10 @@ ML_PARAM_GRID = {  # 'ML': GJK
 # concept drift detection
 CDD_PARAM_GRID = {
     # single window
+    'CONST': {
+        'NONE': ['NONE']
+    },
+
     'DDM': {
         'alpha_w':      [2],  # [1.5, 2],            
         'alpha_d':      [3],  # [2.5, 3],
